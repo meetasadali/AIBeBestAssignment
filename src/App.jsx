@@ -1193,54 +1193,62 @@ function QuranReader({ assignment, onBack }) {
     };
 
     return (
-        <div>
+        <div className="pb-40">
             <button onClick={onBack} className="mb-4 text-emerald-600 font-semibold">&larr; Back to Assignments</button>
-            <div className="bg-white p-8 rounded-lg shadow-lg">
+            <div className="bg-white p-8 rounded-lg shadow-lg mb-20">
                 <div className="mb-6 pb-4 border-b">
                     <h2 className="text-3xl font-bold text-gray-800">Surah {assignment.surahNumber}, Ayat {assignment.startAyah}-{assignment.endAyah}</h2>
                     <p className="text-gray-600 mt-2">{assignment.instructions}</p>
                 </div>
-                
-                <div className="sticky top-0 bg-white z-10 p-4 mb-6 -mx-8 -mt-8 border-b">
-                    <h3 className="font-semibold mb-2">Interactive Tools</h3>
-                    <div className="flex flex-wrap gap-2">
-                        <button onClick={handleReadAloud} disabled={!selectedText} className="bg-blue-500 text-white py-2 px-4 rounded-lg disabled:bg-gray-300">Read Aloud</button>
-                        <button onClick={handleTranslate} disabled={isTranslating || !selectedText} className="bg-green-500 text-white py-2 px-4 rounded-lg disabled:bg-gray-300">
-                            {isTranslating ? 'Translating...' : `Translate`}
-                        </button>
-                         <button onClick={handleMemorizeAloud} disabled={isMemorizing || !selectedText} className="bg-purple-500 text-white py-2 px-4 rounded-lg disabled:bg-gray-300">
-                            {isMemorizing ? 'Processing...' : 'Memorize'}
-                        </button>
-                        <button onClick={handleStopAloud} className="bg-red-500 text-white py-2 px-4 rounded-lg">Stop</button>
-                    </div>
-                     {translation && <div className="mt-4 p-4 bg-gray-100 rounded-md">{translation}</div>}
-                </div>
 
                 {loading ? <Spinner /> : (
-                    <div ref={contentRef} onMouseUp={handleHighlight} className="text-right text-3xl leading-loose font-serif" dir="rtl">
+                    <div ref={contentRef} onMouseUp={handleHighlight} className="text-right text-3xl leading-loose font-serif p-4" dir="rtl">
                         {ayat.map(ayah => <span key={ayah.number}>{ayah.text} ۝ </span>)}
                     </div>
                 )}
-                
-                <div className="mt-6 pt-4 border-t flex justify-between items-center">
-                    <button onClick={handleSaveProgress} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Save Progress & Exit</button>
-                    
-                    {assignment.instructions?.toLowerCase().includes('memorize') ? (
-                        <div className="flex items-center gap-4">
-                            {!isRecording ? 
-                                <button onClick={handleStartRecording} className="bg-green-500 text-white py-2 px-4 rounded-lg">Start Recording</button> :
-                                <button onClick={handleStopRecording} className="bg-red-500 text-white py-2 px-4 rounded-lg">Stop Recording</button>
-                            }
-                            {isRecording && <p className="text-red-500 animate-pulse">Recording...</p>}
-                            {audioUrl && (
+            </div>
+
+            {/* Fixed Control Panel at Bottom */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-2xl p-4 z-50">
+                <div className="container mx-auto max-w-4xl">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-2">
+                            <button onClick={handleReadAloud} disabled={!selectedText} className="bg-blue-500 text-white py-2 px-4 rounded-lg disabled:bg-gray-300 text-sm font-medium shadow-sm">Read Aloud</button>
+                            <button onClick={handleTranslate} disabled={isTranslating || !selectedText} className="bg-green-500 text-white py-2 px-4 rounded-lg disabled:bg-gray-300 text-sm font-medium shadow-sm">
+                                {isTranslating ? 'Translating...' : `Translate`}
+                            </button>
+                            <button onClick={handleMemorizeAloud} disabled={isMemorizing || !selectedText} className="bg-purple-500 text-white py-2 px-4 rounded-lg disabled:bg-gray-300 text-sm font-medium shadow-sm">
+                                {isMemorizing ? 'Processing...' : 'Memorize'}
+                            </button>
+                            <button onClick={handleStopAloud} className="bg-red-500 text-white py-2 px-4 rounded-lg text-sm font-medium shadow-sm">Stop</button>
+                        </div>
+
+                        {/* Completion & Recording Controls */}
+                        <div className="flex items-center gap-3 border-l pl-4 border-gray-300">
+                            <button onClick={handleSaveProgress} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm">Save & Exit</button>
+                            
+                            {assignment.instructions?.toLowerCase().includes('memorize') ? (
                                 <div className="flex items-center gap-2">
-                                    <audio src={audioUrl} controls />
-                                    <button onClick={handleMarkAsComplete} className="bg-indigo-600 text-white py-2 px-4 rounded-lg">Submit Recording</button>
+                                    {!isRecording ? 
+                                        <button onClick={handleStartRecording} className="bg-emerald-600 text-white py-2 px-4 rounded-lg text-sm font-bold shadow-sm">Start Rec</button> :
+                                        <button onClick={handleStopRecording} className="bg-red-600 text-white py-2 px-4 rounded-lg text-sm font-bold animate-pulse shadow-sm">Stop Rec</button>
+                                    }
+                                    {audioUrl && (
+                                        <button onClick={handleMarkAsComplete} className="bg-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-bold shadow-sm">Submit</button>
+                                    )}
                                 </div>
+                            ) : (
+                                <button onClick={handleMarkAsComplete} className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm">Mark Complete</button>
                             )}
                         </div>
-                    ) : (
-                        <button onClick={handleMarkAsComplete} className="bg-indigo-600 text-white py-2 px-4 rounded-lg">Mark as Completed</button>
+                    </div>
+                    
+                    {/* Translation Output Area */}
+                    {translation && (
+                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-gray-800 text-sm animate-fade-in">
+                            <strong>Translation:</strong> {translation}
+                        </div>
                     )}
                 </div>
             </div>
@@ -1480,4 +1488,3 @@ function AssignmentGenerator({ student, onComplete, parentId }) {
 }
 
 export default App;
-

@@ -484,6 +484,7 @@ function StudentDashboard({ user }) {
                                 <th scope="col" className="px-6 py-3">Type</th>
                                 <th scope="col" className="px-6 py-3">Status</th>
                                 <th scope="col" className="px-6 py-3">Score</th>
+                                <th scope="col" className="px-6 py-3">Incorrect</th>
                                 <th scope="col" className="px-6 py-3">Action</th>
                             </tr>
                         </thead>
@@ -497,6 +498,7 @@ function StudentDashboard({ user }) {
                                     <td className="px-6 py-4">{assignment.type === 'quran' ? 'Quran' : 'Academic'}</td>
                                     <td className="px-6 py-4">{assignment.status}</td>
                                     <td className="px-6 py-4 font-semibold text-indigo-600">{assignment.score != null ? `${assignment.score}%` : 'N/A'}</td>
+                                    <td className="px-6 py-4 font-semibold text-red-600">{getIncorrectCount(assignment)}</td>
                                     <td className="px-6 py-4">
                                         <button onClick={() => setTakingAssignment(assignment)} className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs py-1 px-3 rounded-md">
                                             {assignment.status === 'Not Started' ? 'Start' : 'View'}
@@ -572,8 +574,8 @@ function AssignmentView({ assignment, onBack, userRole }) {
         const feedbackPrompt = `A student completed an assignment on "${assignment.topic}". Their score was ${finalScore}%. Here are the questions and their answers: ${JSON.stringify(updatedQuestions)}. Provide a brief, one-sentence suggestion for the parent on what the student should focus on next.`;
         let aiSuggestion = "Good effort!";
         try {
-            const apiKey = "AIzaSyAT2QQK0a5AoExJuDBUy2Q-YXX8rQjGA_E";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: feedbackPrompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (response.ok) {
@@ -869,7 +871,7 @@ function StudentProfileForm({ parentUser, onComplete, existingStudent }) {
                 </fieldset>
             )}
             <fieldset className="border p-4 rounded-md"><legend className="text-lg font-semibold px-2">Basic Information</legend><div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2"><input name="firstName" value={formData.firstName} onChange={handleChange} placeholder="First Name" className="w-full p-2 border rounded" required /><input name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Last Name" className="w-full p-2 border rounded" required /><input type="number" name="age" value={formData.age} onChange={handleChange} placeholder="Age" className="w-full p-2 border rounded" /><input type="date" name="dob" value={formData.dob} onChange={handleChange} className="w-full p-2 border rounded" /><select name="grade" value={formData.grade} onChange={handleChange} className="w-full p-2 border rounded">{['Pre-K', 'K', '1st', '2nd', '3rd', '4th', '5th', '6th', '7th', '8th', '9th', '10th', '11th', '12th', 'ACT/SAT Aspirant'].map(g => <option key={g}>{g}</option>)}</select><select name="schoolType" value={formData.schoolType} onChange={handleChange} className="w-full p-2 border rounded">{['Public', 'Private', 'Homeschool', 'Charter'].map(s => <option key={s}>{s}</option>)}</select></div></fieldset>
-            <fieldset className="border p-4 rounded-md"><legend className="text-lg font-semibold px-2">Learning & Proficiency</legend><div className="space-y-4 mt-2"><div><label className="font-medium text-sm">Learning Style</label>{renderCheckboxGroup('learningStyle', ['Visual', 'Auditory', 'Kinesthetic', 'Reading/Writing'])}</div><div><label className="font-medium text-sm">Strengths</label>{renderCheckboxGroup('strengths', ['Math', 'Reading', 'Science', 'Writing', 'History', 'Art'])}</div><div><label className="font-medium text-sm">Weaknesses</label>{renderCheckboxGroup('weaknesses', ['Math', 'Reading', 'Science', 'Writing', 'Grammar'])}</div></div></fieldset>
+            <fieldset className="border p-4 rounded-md"><legend className="text-lg font-semibold px-2">Learning & Proficiency</legend><div className="space-y-4 mt-2"><div><label className="font-medium text-sm">Learning Style</label>{renderCheckboxGroup('learningStyle', ['Visual', 'Auditory', 'Kinesthetic', 'Reading/Writing'])}</div><div><label className="font-medium text-sm">Learning Style</label>{renderCheckboxGroup('learningStyle', ['Visual', 'Auditory', 'Kinesthetic', 'Reading/Writing'])}</div><div><label className="font-medium text-sm">Strengths</label>{renderCheckboxGroup('strengths', ['Math', 'Reading', 'Science', 'Writing', 'History', 'Art'])}</div><div><label className="font-medium text-sm">Weaknesses</label>{renderCheckboxGroup('weaknesses', ['Math', 'Reading', 'Science', 'Writing', 'Grammar'])}</div></div></fieldset>
             {message.text && <div className={`p-2 rounded text-sm ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{message.text}</div>}
             <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">{loading ? 'Saving...' : 'Save Profile'}</button>
         </form>
@@ -898,8 +900,8 @@ function TopicExplorer({ student, onAssignmentCreated }) {
         setSuggestions([]);
         const prompt = `A ${student.grade} student wants to learn about "${subject}". Suggest 5 specific topics. For each topic, provide a brief "explanation", a simple "example", and a "quickTip". Return a JSON object with a "topics" array where each element is an object with "topicName", "explanation", "example", and "quickTip" keys.`;
         try {
-            const apiKey = "AIzaSyAT2QQK0a5AoExJuDBUy2Q-YXX8rQjGA_E";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
@@ -992,7 +994,7 @@ function TopicExplorer({ student, onAssignmentCreated }) {
 // --- Quran Assignment Form ---
 function QuranAssignmentForm({ student, onComplete, parentId }) {
     const [surahs, setSurahs] = useState([]);
-    const [formData, setFormData] = useState({ studentId: student.id, surahNumber: '1', startAyah: '', endAyah: '', language: 'English', instructions: '' });
+    const [formData, setFormData] = useState({ studentId: student.id, surahNumber: '1', startAyah: '', endAyah: '', language: 'English', instructions: '', fullSurah: false });
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -1008,7 +1010,19 @@ function QuranAssignmentForm({ student, onComplete, parentId }) {
         fetchSurahs();
     }, []);
 
-    const handleChange = (e) => setFormData(prev => ({...prev, [e.target.name]: e.target.value}));
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        setFormData(prev => ({...prev, [name]: type === 'checkbox' ? checked : value}));
+    };
+    
+    useEffect(() => {
+        if (formData.fullSurah && formData.surahNumber) {
+            const selectedSurah = surahs.find(s => s.number === parseInt(formData.surahNumber));
+            if (selectedSurah) {
+                setFormData(prev => ({ ...prev, startAyah: 1, endAyah: selectedSurah.numberOfAyahs }));
+            }
+        }
+    }, [formData.fullSurah, formData.surahNumber, surahs]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -1037,9 +1051,15 @@ function QuranAssignmentForm({ student, onComplete, parentId }) {
             <select name="surahNumber" value={formData.surahNumber} onChange={handleChange} className="w-full p-2 border rounded">
                 {surahs.map(s => <option key={s.number} value={s.number}>{s.number}. {s.englishName} ({s.name})</option>)}
             </select>
+            
+            <div className="flex items-center mb-2">
+                <input type="checkbox" name="fullSurah" checked={formData.fullSurah} onChange={handleChange} className="h-4 w-4 text-indigo-600" />
+                <label className="ml-2 text-gray-700 text-sm">Assign Full Surah</label>
+            </div>
+
             <div className="flex gap-4">
-                <input name="startAyah" value={formData.startAyah} onChange={handleChange} placeholder="Start Ayah" type="number" className="w-full p-2 border rounded" required />
-                <input name="endAyah" value={formData.endAyah} onChange={handleChange} placeholder="End Ayah" type="number" className="w-full p-2 border rounded" required />
+                <input name="startAyah" value={formData.startAyah} onChange={handleChange} placeholder="Start Ayah" type="number" className="w-full p-2 border rounded disabled:bg-gray-100" required disabled={formData.fullSurah} />
+                <input name="endAyah" value={formData.endAyah} onChange={handleChange} placeholder="End Ayah" type="number" className="w-full p-2 border rounded disabled:bg-gray-100" required disabled={formData.fullSurah} />
             </div>
             <select name="language" value={formData.language} onChange={handleChange} className="w-full p-2 border rounded">
                 {['English', 'Hindi', 'Urdu', 'Spanish', 'French'].map(lang => <option key={lang}>{lang}</option>)}
@@ -1108,8 +1128,8 @@ function QuranReader({ assignment, onBack }) {
 
         const prompt = `Translate the following Quranic verse into simple ${assignment.language}: "${selectedText}"`;
         try {
-            const apiKey = "AIzaSyAT2QQK0a5AoExJuDBUy2Q-YXX8rQjGA_E";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
@@ -1142,8 +1162,8 @@ function QuranReader({ assignment, onBack }) {
         setIsTranslating(true);
         const prompt = `Translate the following Quranic verse into ${assignment.language}: "${selectedText}"`;
         try {
-            const apiKey = "AIzaSyAT2QQK0a5AoExJuDBUy2Q-YXX8rQjGA_E";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
@@ -1290,8 +1310,8 @@ const generateAssignmentAI = async (student, parentId, criteria, onComplete) => 
     const prompt = `Based on this profile: ${studentProfileContext} Create an assignment with these details: ${assignmentContext}. ${formatInstruction} ${explanationPrompt} ${historyInstruction} Instructions: ${jsonStructure} Each question object in the "questions" array must have: "id", "type", "text". For MCQs, you MUST include an "options" array and a "correctAnswer" key. For other types, you do not need to. Do not include any markdown or explanatory text outside the JSON.`;
     
     try {
-        const apiKey = "AIzaSyAT2QQK0a5AoExJuDBUy2Q-YXX8rQjGA_E";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+        const apiKey = "";
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
         const payload = { contents: [{ parts: [{ text: prompt }] }] };
         const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (!response.ok) throw new Error(`API call failed: ${response.status}`);
@@ -1384,8 +1404,8 @@ function AssignmentGenerator({ student, onComplete, parentId }) {
         setLoadingTopics(true);
         const prompt = `You are an expert curriculum planner for the U.S. education system. A parent is creating an assignment for their child. Student's Grade: ${student.grade}. Subject: ${formData.subject}. Generate a list of 20-25 relevant academic topics for this subject. The list should include topics appropriate for the student's current grade level, as well as some more challenging topics from one or two grades above to help them get ahead. Return the output as a single, clean JSON object with one key: "topics". The value should be an array of strings. For example: {"topics": ["Topic 1", "Topic 2", "Advanced Topic 3"]}. Do not include any other text or markdown formatting.`;
         try {
-            const apiKey = "AIzaSyAT2QQK0a5AoExJuDBUy2Q-YXX8rQjGA_E";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!response.ok) throw new Error(`API call failed: ${response.status}`);

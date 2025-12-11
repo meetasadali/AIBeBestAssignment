@@ -598,7 +598,7 @@ function AssignmentView({ assignment, onBack, userRole }) {
         let aiSuggestion = "Good effort!";
         try {
             const apiKey = GEMINI_API_KEY;
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: feedbackPrompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (response.ok) {
@@ -903,7 +903,7 @@ function TopicExplorer({ student, onAssignmentCreated }) {
         const prompt = `A ${student.grade} student wants to learn about "${subject}". Suggest 5 specific topics. For each topic, provide a brief "explanation", a simple "example", and a "quickTip". Return a JSON object with a "topics" array where each element is an object with "topicName", "explanation", "example", and "quickTip" keys. Return ONLY valid JSON. Do not use markdown formatting. Do not include trailing commas.`;
         try {
             const apiKey = GEMINI_API_KEY;
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
@@ -1120,7 +1120,7 @@ function QuranReader({ assignment, onBack }) {
     };
     
     const handleStopAloud = () => {
-        speechSynthesis.cancel();
+        speechSynthesis.cancel();f
     };
 
     const handleMemorizeAloud = async () => {
@@ -1131,7 +1131,7 @@ function QuranReader({ assignment, onBack }) {
         const prompt = `Translate the following Quranic verse into simple ${assignment.language}: "${selectedText}"`;
         try {
             const apiKey = GEMINI_API_KEY;
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
@@ -1165,7 +1165,7 @@ function QuranReader({ assignment, onBack }) {
         const prompt = `Translate the following Quranic verse into ${assignment.language}: "${selectedText}"`;
         try {
             const apiKey = GEMINI_API_KEY;
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
@@ -1317,7 +1317,7 @@ const generateAssignmentAI = async (student, parentId, criteria, onComplete) => 
     
     try {
         const apiKey = GEMINI_API_KEY;
-        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
         const payload = { contents: [{ parts: [{ text: prompt }] }] };
         const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (!response.ok) throw new Error(`API call failed: ${response.status}`);
@@ -1411,7 +1411,7 @@ function AssignmentGenerator({ student, onComplete, parentId }) {
         const prompt = `You are an expert curriculum planner for the U.S. education system. A parent is creating an assignment for their child. Student's Grade: ${student.grade}. Subject: ${formData.subject}. Generate a list of 20-25 relevant academic topics for this subject. The list should include topics appropriate for the student's current grade level, as well as some more challenging topics from one or two grades above to help them get ahead. Return the output as a single, clean JSON object with one key: "topics". The value should be an array of strings. For example: {"topics": ["Topic 1", "Topic 2", "Advanced Topic 3"]}. Do not include any other text or markdown formatting. Return ONLY valid JSON. Do not use markdown formatting. Do not include trailing commas.`;
         try {
             const apiKey = GEMINI_API_KEY;
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!response.ok) throw new Error(`API call failed: ${response.status}`);

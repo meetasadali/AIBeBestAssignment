@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp, deleteApp } from 'firebase/app';
-// Firebase Analytics has been removed to prevent environment-specific errors.
+import { initializeApp } from 'firebase/app';
 import {
     getAuth,
     onAuthStateChanged,
@@ -24,8 +23,10 @@ import {
     serverTimestamp,
     getDocs
 } from 'firebase/firestore';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+
+// Note: jsPDF and html2canvas imports are commented out to prevent build errors in the web preview environment.
+// import jsPDF from 'jspdf';
+// import html2canvas from 'html2canvas';
 
 // --- Helper Components & Icons ---
 
@@ -40,7 +41,7 @@ const Modal = ({ isOpen, onClose, title, children }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center p-4">
             <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center">
+                <div className="sticky top-0 bg-white border-b p-4 flex justify-between items-center z-50">
                     <h3 className="text-lg font-semibold text-gray-800">{title}</h3>
                     <button onClick={onClose} className="text-gray-500 hover:text-gray-800">&times;</button>
                 </div>
@@ -48,6 +49,28 @@ const Modal = ({ isOpen, onClose, title, children }) => {
             </div>
         </div>
     );
+};
+
+// --- Helper function for safe JSON parsing ---
+const safeJsonParse = (text) => {
+    try {
+        // 1. Remove markdown code blocks
+        let cleanText = text.replace(/```json|```/g, '').trim();
+        
+        // 2. Find the first '{' and last '}' to extract the JSON object
+        const firstBrace = cleanText.indexOf('{');
+        const lastBrace = cleanText.lastIndexOf('}');
+        
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            cleanText = cleanText.substring(firstBrace, lastBrace + 1);
+        }
+        
+        return JSON.parse(cleanText);
+    } catch (e) {
+        console.error("JSON Parse Error:", e);
+        console.log("Failed text:", text);
+        return { topics: [], questions: [] };
+    }
 };
 
 // --- Firebase Initialization ---
@@ -65,6 +88,8 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// --- API Key Configuration ---
+const GEMINI_API_KEY = "AIzaSyDvS6aA74zN2KwB1A5JNHQohvoIxxJ2q20"; // User provided key
 
 // --- Main App Component ---
 function App() {
@@ -138,7 +163,7 @@ function App() {
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans">
-            <header className="bg-white shadow-md">
+            <header className="bg-white shadow-md sticky top-0 z-40">
                 <nav className="container mx-auto px-6 py-3 flex justify-between items-center">
                     <div className="text-2xl font-bold text-indigo-600">AI Learning Hub</div>
                     {user && (<button onClick={handleSignOut} className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700">Sign Out</button>)}
@@ -169,7 +194,7 @@ function AuthScreen() {
                 await setDoc(doc(db, "users", userCredential.user.uid), {
                     email: userCredential.user.email,
                     role: 'parent',
-                    status: 'pending', // New accounts are pending approval
+                    status: 'pending',
                     createdAt: serverTimestamp(),
                     managedStudentIds: []
                 });
@@ -484,7 +509,6 @@ function StudentDashboard({ user }) {
                                 <th scope="col" className="px-6 py-3">Type</th>
                                 <th scope="col" className="px-6 py-3">Status</th>
                                 <th scope="col" className="px-6 py-3">Score</th>
-                                <th scope="col" className="px-6 py-3">Incorrect</th>
                                 <th scope="col" className="px-6 py-3">Action</th>
                             </tr>
                         </thead>
@@ -498,7 +522,6 @@ function StudentDashboard({ user }) {
                                     <td className="px-6 py-4">{assignment.type === 'quran' ? 'Quran' : 'Academic'}</td>
                                     <td className="px-6 py-4">{assignment.status}</td>
                                     <td className="px-6 py-4 font-semibold text-indigo-600">{assignment.score != null ? `${assignment.score}%` : 'N/A'}</td>
-                                    <td className="px-6 py-4 font-semibold text-red-600">{getIncorrectCount(assignment)}</td>
                                     <td className="px-6 py-4">
                                         <button onClick={() => setTakingAssignment(assignment)} className="bg-indigo-500 hover:bg-indigo-600 text-white text-xs py-1 px-3 rounded-md">
                                             {assignment.status === 'Not Started' ? 'Start' : 'View'}
@@ -574,8 +597,8 @@ function AssignmentView({ assignment, onBack, userRole }) {
         const feedbackPrompt = `A student completed an assignment on "${assignment.topic}". Their score was ${finalScore}%. Here are the questions and their answers: ${JSON.stringify(updatedQuestions)}. Provide a brief, one-sentence suggestion for the parent on what the student should focus on next.`;
         let aiSuggestion = "Good effort!";
         try {
-            const apiKey = "AIzaSyDvS6aA74zN2KwB1A5JNHQohvoIxxJ2q20";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash-flash:generateContent?key=${apiKey}`;
+            const apiKey = GEMINI_API_KEY;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: feedbackPrompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (response.ok) {
@@ -676,29 +699,8 @@ function AssignmentDetailView({ assignment, onBack, studentName }) {
     };
 
     const handleDownloadPdf = () => {
-        const input = contentRef.current;
-        const { jsPDF } = window.jspdf;
-        const html2canvas = window.html2canvas;
-
-        if (!html2canvas || !jsPDF) {
-            alert("PDF generation library is not available.");
-            return;
-        }
-
-        html2canvas(input, { scale: 2 }).then(canvas => {
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF('p', 'mm', 'a4');
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const canvasWidth = canvas.width;
-            const canvasHeight = canvas.height;
-            const ratio = canvasWidth / canvasHeight;
-            const width = pdfWidth;
-            const height = width / ratio;
-            
-            pdf.addImage(imgData, 'PNG', 0, 0, width, height > pdfHeight ? pdfHeight : height);
-            pdf.save(`assignment-${assignment.topic}-${studentName}.pdf`);
-        });
+        // PDF generation functionality temporarily disabled for this environment
+        alert("PDF download is not available in this demo environment.");
     };
 
     return (
@@ -898,15 +900,15 @@ function TopicExplorer({ student, onAssignmentCreated }) {
         }
         setLoading(true);
         setSuggestions([]);
-        const prompt = `A ${student.grade} student wants to learn about "${subject}". Suggest 5 specific topics. For each topic, provide a brief "explanation", a simple "example", and a "quickTip". Return a JSON object with a "topics" array where each element is an object with "topicName", "explanation", "example", and "quickTip" keys.`;
+        const prompt = `A ${student.grade} student wants to learn about "${subject}". Suggest 5 specific topics. For each topic, provide a brief "explanation", a simple "example", and a "quickTip". Return a JSON object with a "topics" array where each element is an object with "topicName", "explanation", "example", and "quickTip" keys. Return ONLY valid JSON. Do not use markdown formatting. Do not include trailing commas.`;
         try {
-            const apiKey = "AIzaSyDvS6aA74zN2KwB1A5JNHQohvoIxxJ2q20";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const apiKey = GEMINI_API_KEY;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
             const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
-            const data = JSON.parse(text.replace(/```json|```/g, '').trim());
+            const data = safeJsonParse(text);
             setSuggestions(data.topics || []);
         } catch (err) {
             console.error("Topic suggestion failed:", err);
@@ -1128,8 +1130,8 @@ function QuranReader({ assignment, onBack }) {
 
         const prompt = `Translate the following Quranic verse into simple ${assignment.language}: "${selectedText}"`;
         try {
-            const apiKey = "AIzaSyDvS6aA74zN2KwB1A5JNHQohvoIxxJ2q20";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const apiKey = GEMINI_API_KEY;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
@@ -1162,8 +1164,8 @@ function QuranReader({ assignment, onBack }) {
         setIsTranslating(true);
         const prompt = `Translate the following Quranic verse into ${assignment.language}: "${selectedText}"`;
         try {
-            const apiKey = "AIzaSyDvS6aA74zN2KwB1A5JNHQohvoIxxJ2q20";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const apiKey = GEMINI_API_KEY;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             const result = await response.json();
@@ -1215,6 +1217,55 @@ function QuranReader({ assignment, onBack }) {
     return (
         <div className="pb-40">
             <button onClick={onBack} className="mb-4 text-emerald-600 font-semibold">&larr; Back to Assignments</button>
+            
+             {/* Sticky Control Panel at Top */}
+            <div className="sticky top-0 z-30 bg-white shadow-md p-4 -mx-4 sm:-mx-6 mb-6 border-b">
+                 <div className="container mx-auto max-w-4xl">
+                     <h3 className="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide">Interactive Tools</h3>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-2">
+                            <button onClick={handleReadAloud} disabled={!selectedText} className="bg-blue-500 hover:bg-blue-600 text-white py-1.5 px-3 rounded-md disabled:bg-gray-300 text-sm font-medium shadow-sm transition-colors">Read Aloud</button>
+                            <button onClick={handleTranslate} disabled={isTranslating || !selectedText} className="bg-green-500 hover:bg-green-600 text-white py-1.5 px-3 rounded-md disabled:bg-gray-300 text-sm font-medium shadow-sm transition-colors">
+                                {isTranslating ? 'Translating...' : `Translate`}
+                            </button>
+                            <button onClick={handleMemorizeAloud} disabled={isMemorizing || !selectedText} className="bg-purple-500 hover:bg-purple-600 text-white py-1.5 px-3 rounded-md disabled:bg-gray-300 text-sm font-medium shadow-sm transition-colors">
+                                {isMemorizing ? 'Processing...' : 'Memorize'}
+                            </button>
+                            <button onClick={handleStopAloud} className="bg-red-500 hover:bg-red-600 text-white py-1.5 px-3 rounded-md text-sm font-medium shadow-sm transition-colors">Stop Audio</button>
+                        </div>
+
+                        {/* Completion & Recording Controls */}
+                        <div className="flex items-center gap-3 border-l-0 sm:border-l sm:pl-4 border-gray-300 pt-2 sm:pt-0">
+                             <button onClick={handleSaveProgress} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-1.5 px-3 rounded-md text-sm shadow-sm transition-colors">Save & Exit</button>
+                            
+                            {/* Always show recording or completion controls */}
+                            <div className="flex items-center gap-2">
+                                    {/* Check instructions for 'memorize' keyword to toggle recording UI, defaulting to show it if unsure */}
+                                    {assignment.instructions?.toLowerCase().includes('memorize') || true ? (
+                                        <>
+                                         {!isRecording ? 
+                                            <button onClick={handleStartRecording} className="bg-emerald-600 hover:bg-emerald-700 text-white py-1.5 px-3 rounded-md text-sm font-bold shadow-sm transition-colors">Start Rec</button> :
+                                            <button onClick={handleStopRecording} className="bg-red-600 hover:bg-red-700 text-white py-1.5 px-3 rounded-md text-sm font-bold animate-pulse shadow-sm transition-colors">Stop Rec</button>
+                                        }
+                                        {audioUrl && (
+                                            <button onClick={handleMarkAsComplete} className="bg-indigo-600 hover:bg-indigo-700 text-white py-1.5 px-3 rounded-md text-sm font-bold shadow-sm transition-colors">Submit</button>
+                                        )}
+                                        </>
+                                    ) : null}
+                                     <button onClick={handleMarkAsComplete} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-md text-sm shadow-sm transition-colors">Mark Complete</button>
+                            </div>
+                        </div>
+                    </div>
+                     {/* Translation Output Area */}
+                    {translation && (
+                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-gray-800 text-sm animate-fade-in">
+                            <strong>Translation:</strong> {translation}
+                        </div>
+                    )}
+                </div>
+            </div>
+
             <div className="bg-white p-8 rounded-lg shadow-lg mb-20">
                 <div className="mb-6 pb-4 border-b">
                     <h2 className="text-3xl font-bold text-gray-800">Surah {assignment.surahNumber}, Ayat {assignment.startAyah}-{assignment.endAyah}</h2>
@@ -1226,51 +1277,6 @@ function QuranReader({ assignment, onBack }) {
                         {ayat.map(ayah => <span key={ayah.number}>{ayah.text} ۝ </span>)}
                     </div>
                 )}
-            </div>
-
-            {/* Fixed Control Panel at Bottom */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-2xl p-4 z-50">
-                <div className="container mx-auto max-w-4xl">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        {/* Action Buttons */}
-                        <div className="flex flex-wrap gap-2">
-                            <button onClick={handleReadAloud} disabled={!selectedText} className="bg-blue-500 text-white py-2 px-4 rounded-lg disabled:bg-gray-300 text-sm font-medium shadow-sm">Read Aloud</button>
-                            <button onClick={handleTranslate} disabled={isTranslating || !selectedText} className="bg-green-500 text-white py-2 px-4 rounded-lg disabled:bg-gray-300 text-sm font-medium shadow-sm">
-                                {isTranslating ? 'Translating...' : `Translate`}
-                            </button>
-                            <button onClick={handleMemorizeAloud} disabled={isMemorizing || !selectedText} className="bg-purple-500 text-white py-2 px-4 rounded-lg disabled:bg-gray-300 text-sm font-medium shadow-sm">
-                                {isMemorizing ? 'Processing...' : 'Memorize'}
-                            </button>
-                            <button onClick={handleStopAloud} className="bg-red-500 text-white py-2 px-4 rounded-lg text-sm font-medium shadow-sm">Stop</button>
-                        </div>
-
-                        {/* Completion & Recording Controls */}
-                        <div className="flex items-center gap-3 border-l pl-4 border-gray-300">
-                            <button onClick={handleSaveProgress} className="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm">Save & Exit</button>
-                            
-                            {assignment.instructions?.toLowerCase().includes('memorize') ? (
-                                <div className="flex items-center gap-2">
-                                    {!isRecording ? 
-                                        <button onClick={handleStartRecording} className="bg-emerald-600 text-white py-2 px-4 rounded-lg text-sm font-bold shadow-sm">Start Rec</button> :
-                                        <button onClick={handleStopRecording} className="bg-red-600 text-white py-2 px-4 rounded-lg text-sm font-bold animate-pulse shadow-sm">Stop Rec</button>
-                                    }
-                                    {audioUrl && (
-                                        <button onClick={handleMarkAsComplete} className="bg-indigo-600 text-white py-2 px-4 rounded-lg text-sm font-bold shadow-sm">Submit</button>
-                                    )}
-                                </div>
-                            ) : (
-                                <button onClick={handleMarkAsComplete} className="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg text-sm shadow-sm">Mark Complete</button>
-                            )}
-                        </div>
-                    </div>
-                    
-                    {/* Translation Output Area */}
-                    {translation && (
-                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-gray-800 text-sm animate-fade-in">
-                            <strong>Translation:</strong> {translation}
-                        </div>
-                    )}
-                </div>
             </div>
         </div>
     );
@@ -1307,11 +1313,11 @@ const generateAssignmentAI = async (student, parentId, criteria, onComplete) => 
     const assignmentContext = `Assignment Details: Subject: ${criteria.subject}. Topics: ${criteria.topics}. Purpose: ${criteria.assignmentPurpose}. Difficulty: ${criteria.difficulty}. Number of questions: ${criteria.numQuestions}.`;
     const formatInstruction = `The assignment must only contain the following question types: ${criteria.assignmentFormat.join(', ')}. For each question, the "type" field in the JSON must be one of these. If "MCQ" is a requested type, you MUST provide an "options" array and a "correctAnswer" key for that question.`;
 
-    const prompt = `Based on this profile: ${studentProfileContext} Create an assignment with these details: ${assignmentContext}. ${formatInstruction} ${explanationPrompt} ${historyInstruction} Instructions: ${jsonStructure} Each question object in the "questions" array must have: "id", "type", "text". For MCQs, you MUST include an "options" array and a "correctAnswer" key. For other types, you do not need to. Do not include any markdown or explanatory text outside the JSON.`;
+    const prompt = `Based on this profile: ${studentProfileContext} Create an assignment with these details: ${assignmentContext}. ${formatInstruction} ${explanationPrompt} ${historyInstruction} Instructions: ${jsonStructure} Each question object in the "questions" array must have: "id", "type", "text". For MCQs, you MUST include an "options" array and a "correctAnswer" key. For other types, you do not need to. Do not include any markdown or explanatory text outside the JSON. Return ONLY valid JSON. Do not use markdown formatting. Do not include trailing commas.`;
     
     try {
-        const apiKey = "AIzaSyDvS6aA74zN2KwB1A5JNHQohvoIxxJ2q20";
-        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+        const apiKey = GEMINI_API_KEY;
+        const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
         const payload = { contents: [{ parts: [{ text: prompt }] }] };
         const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (!response.ok) throw new Error(`API call failed: ${response.status}`);
@@ -1320,7 +1326,7 @@ const generateAssignmentAI = async (student, parentId, criteria, onComplete) => 
         const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!text) throw new Error("Invalid response from AI.");
 
-        const generatedData = JSON.parse(text.replace(/```json|```/g, '').trim());
+        const generatedData = safeJsonParse(text);
 
         const assignmentPayload = {
             studentId: student.id || student.uid, parentId, ...criteria,
@@ -1402,17 +1408,17 @@ function AssignmentGenerator({ student, onComplete, parentId }) {
             return;
         }
         setLoadingTopics(true);
-        const prompt = `You are an expert curriculum planner for the U.S. education system. A parent is creating an assignment for their child. Student's Grade: ${student.grade}. Subject: ${formData.subject}. Generate a list of 20-25 relevant academic topics for this subject. The list should include topics appropriate for the student's current grade level, as well as some more challenging topics from one or two grades above to help them get ahead. Return the output as a single, clean JSON object with one key: "topics". The value should be an array of strings. For example: {"topics": ["Topic 1", "Topic 2", "Advanced Topic 3"]}. Do not include any other text or markdown formatting.`;
+        const prompt = `You are an expert curriculum planner for the U.S. education system. A parent is creating an assignment for their child. Student's Grade: ${student.grade}. Subject: ${formData.subject}. Generate a list of 20-25 relevant academic topics for this subject. The list should include topics appropriate for the student's current grade level, as well as some more challenging topics from one or two grades above to help them get ahead. Return the output as a single, clean JSON object with one key: "topics". The value should be an array of strings. For example: {"topics": ["Topic 1", "Topic 2", "Advanced Topic 3"]}. Do not include any other text or markdown formatting. Return ONLY valid JSON. Do not use markdown formatting. Do not include trailing commas.`;
         try {
-            const apiKey = "AIzaSyDvS6aA74zN2KwB1A5JNHQohvoIxxJ2q20";
-            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const apiKey = GEMINI_API_KEY;
+            const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!response.ok) throw new Error(`API call failed: ${response.status}`);
             const result = await response.json();
             const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
             if (!text) throw new Error("Invalid response from AI.");
-            const data = JSON.parse(text.replace(/```json|```/g, '').trim());
+            const data = safeJsonParse(text);
             setSuggestedTopics(data.topics || []);
         } catch (err) {
             console.error("Topic suggestion failed:", err);
@@ -1479,7 +1485,7 @@ function AssignmentGenerator({ student, onComplete, parentId }) {
 
             <fieldset className="border p-4 rounded-md"><legend className="font-semibold px-2">Assignment Type & Format</legend><div className="space-y-4 mt-2">
                 <select name="assignmentPurpose" value={formData.assignmentPurpose} onChange={handleChange} className="w-full p-2 border rounded">{['Practice', 'Pre-Test', 'Revision', 'Challenge', 'Homework'].map(p => <option key={p}>{p}</option>)}</select>
-                <div><label className="font-medium text-sm">Format</label><div className="flex flex-wrap gap-x-4 gap-y-2">{['MCQ', 'Short Answer', 'Long Answer', 'Fill-in-the-Blank'].map(f => (<label key={f} className="inline-flex items-center"><input type="checkbox" name="assignmentFormat" value={f} checked={formData.assignmentFormat.includes(f)} onChange={handleMultiSelectChange} className="form-checkbox" /><span className="ml-2">{f}</span></label>))}</div></div>
+                <div><label className="font-medium text-sm">Format</label><div className="flex flex-wrap gap-x-4 gap-y-2">{['MCQ', 'Short Answer', 'Long Answer', 'Fill-in-the-Blank'].map(f => (<label key={f} className="inline-flex items-center"><input type="checkbox" name="assignmentFormat" value={f} checked={quizCriteria.assignmentFormat.includes(f)} onChange={handleMultiSelectChange} className="form-checkbox" /><span className="ml-2">{f}</span></label>))}</div></div>
             </div></fieldset>
 
             <fieldset className="border p-4 rounded-md"><legend className="font-semibold px-2">Difficulty & Personalization</legend><div className="space-y-4 mt-2">

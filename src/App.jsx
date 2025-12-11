@@ -89,7 +89,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // --- API Key Configuration ---
-const GEMINI_API_KEY = "AIzaSyDvS6aA74zN2KwB1A5JNHQohvoIxxJ2q20"; // User provided key
+const GEMINI_API_KEY = "AIzaSyBmI7LSHuo605efdT5umW1fX8gBOVkSrNw"; // User provided key
 
 // --- Main App Component ---
 function App() {
@@ -699,7 +699,7 @@ function AssignmentDetailView({ assignment, onBack, studentName }) {
     };
 
     const handleDownloadPdf = () => {
-        // PDF generation functionality temporarily disabled for this environment
+        // PDF generation disabled in preview to avoid build errors
         alert("PDF download is not available in this demo environment.");
     };
 
@@ -1485,7 +1485,7 @@ function AssignmentGenerator({ student, onComplete, parentId }) {
 
             <fieldset className="border p-4 rounded-md"><legend className="font-semibold px-2">Assignment Type & Format</legend><div className="space-y-4 mt-2">
                 <select name="assignmentPurpose" value={formData.assignmentPurpose} onChange={handleChange} className="w-full p-2 border rounded">{['Practice', 'Pre-Test', 'Revision', 'Challenge', 'Homework'].map(p => <option key={p}>{p}</option>)}</select>
-                <div><label className="font-medium text-sm">Format</label><div className="flex flex-wrap gap-x-4 gap-y-2">{['MCQ', 'Short Answer', 'Long Answer', 'Fill-in-the-Blank'].map(f => (<label key={f} className="inline-flex items-center"><input type="checkbox" name="assignmentFormat" value={f} checked={quizCriteria.assignmentFormat.includes(f)} onChange={handleMultiSelectChange} className="form-checkbox" /><span className="ml-2">{f}</span></label>))}</div></div>
+                <div><label className="font-medium text-sm">Format</label><div className="flex flex-wrap gap-x-4 gap-y-2">{['MCQ', 'Short Answer', 'Long Answer', 'Fill-in-the-Blank'].map(f => (<label key={f} className="inline-flex items-center"><input type="checkbox" name="assignmentFormat" value={f} checked={formData.assignmentFormat.includes(f)} onChange={handleMultiSelectChange} className="form-checkbox" /><span className="ml-2">{f}</span></label>))}</div></div>
             </div></fieldset>
 
             <fieldset className="border p-4 rounded-md"><legend className="font-semibold px-2">Difficulty & Personalization</legend><div className="space-y-4 mt-2">

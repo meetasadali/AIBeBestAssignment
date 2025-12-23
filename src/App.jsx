@@ -89,7 +89,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 // --- API Key Configuration ---
-const GEMINI_API_KEY = "AIzaSyBmI7LSHuo605efdT5umW1fX8gBOVkSrNw"; // User provided key
+const GEMINI_API_KEY = "AIzaSyClPkr_hiy93skx8fEXb-_TPc5lZcpdHAM"; // User provided key
 
 // --- Main App Component ---
 function App() {

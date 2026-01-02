@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
+import { initializeApp, deleteApp } from 'firebase/app';
 import {
     getAuth,
     onAuthStateChanged,
@@ -88,8 +88,11 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// --- API Key Configuration ---
-const GEMINI_API_KEY = "AIzaSyAA7RV2E1HiE2-sgKRu51swhOoIHkk9VTA"; // User provided key
+// --- API Key Helper ---
+// This retrieves the key safely from browser storage instead of code
+const getGeminiKey = () => {
+    return localStorage.getItem("gemini_api_key");
+};
 
 // --- Main App Component ---
 function App() {
@@ -174,18 +177,36 @@ function App() {
     );
 }
 
-// --- Authentication Screen ---
+// --- Authentication Screen (Updated for API Key) ---
 function AuthScreen() {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [apiKey, setApiKey] = useState(''); // New State
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // Pre-load key if it exists in storage
+    useEffect(() => {
+        const savedKey = localStorage.getItem("gemini_api_key");
+        if(savedKey) setApiKey(savedKey);
+    }, []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+        
+        // Validation: Ensure key is present
+        if (!apiKey.trim()) {
+            setError("Please enter your Gemini API Key.");
+            setLoading(false);
+            return;
+        }
+
+        // Save key to local storage
+        localStorage.setItem("gemini_api_key", apiKey.trim());
+
         try {
             if (isLogin) {
                 await signInWithEmailAndPassword(auth, email, password);
@@ -209,7 +230,16 @@ function AuthScreen() {
     return (
         <div className="max-w-md mx-auto mt-10 bg-white p-8 rounded-lg shadow-lg">
             <h2 className="text-3xl font-bold text-center text-gray-800 mb-6">{isLogin ? 'Login' : 'Parent Sign Up'}</h2>
+            
+            <div className="mb-6 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+               <strong>Important:</strong> Enter your Google Gemini API key below. It will be saved securely in your browser, not on our server.
+            </div>
+
             <form onSubmit={handleSubmit}>
+                 <div className="mb-4">
+                    <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="apiKey">Gemini API Key</label>
+                    <input type="password" id="apiKey" value={apiKey} onChange={(e) => setApiKey(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" placeholder="AIzaSy..." required />
+                </div>
                 <div className="mb-4">
                     <label className="block text-gray-700 text-sm font-bold mb-2" htmlFor="email">Email</label>
                     <input type="email" id="email" value={email} onChange={(e) => setEmail(e.target.value)} className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700" required />
@@ -597,7 +627,9 @@ function AssignmentView({ assignment, onBack, userRole }) {
         const feedbackPrompt = `A student completed an assignment on "${assignment.topic}". Their score was ${finalScore}%. Here are the questions and their answers: ${JSON.stringify(updatedQuestions)}. Provide a brief, one-sentence suggestion for the parent on what the student should focus on next.`;
         let aiSuggestion = "Good effort!";
         try {
-            const apiKey = GEMINI_API_KEY;
+            const apiKey = getGeminiKey();
+            if(!apiKey) throw new Error("API Key missing");
+
             const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: feedbackPrompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -902,7 +934,9 @@ function TopicExplorer({ student, onAssignmentCreated }) {
         setSuggestions([]);
         const prompt = `A ${student.grade} student wants to learn about "${subject}". Suggest 5 specific topics. For each topic, provide a brief "explanation", a simple "example", and a "quickTip". Return a JSON object with a "topics" array where each element is an object with "topicName", "explanation", "example", and "quickTip" keys. Return ONLY valid JSON. Do not use markdown formatting. Do not include trailing commas.`;
         try {
-            const apiKey = GEMINI_API_KEY;
+            const apiKey = getGeminiKey();
+            if(!apiKey) { alert("API Key missing. Please re-login."); return; }
+
             const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1130,7 +1164,9 @@ function QuranReader({ assignment, onBack }) {
 
         const prompt = `Translate the following Quranic verse into simple ${assignment.language}: "${selectedText}"`;
         try {
-            const apiKey = GEMINI_API_KEY;
+            const apiKey = getGeminiKey();
+            if(!apiKey) { alert("API Key missing"); return; }
+            
             const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1164,7 +1200,9 @@ function QuranReader({ assignment, onBack }) {
         setIsTranslating(true);
         const prompt = `Translate the following Quranic verse into ${assignment.language}: "${selectedText}"`;
         try {
-            const apiKey = GEMINI_API_KEY;
+            const apiKey = getGeminiKey();
+            if(!apiKey) { alert("API Key missing"); return; }
+
             const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1316,7 +1354,9 @@ const generateAssignmentAI = async (student, parentId, criteria, onComplete) => 
     const prompt = `Based on this profile: ${studentProfileContext} Create an assignment with these details: ${assignmentContext}. ${formatInstruction} ${explanationPrompt} ${historyInstruction} Instructions: ${jsonStructure} Each question object in the "questions" array must have: "id", "type", "text". For MCQs, you MUST include an "options" array and a "correctAnswer" key. For other types, you do not need to. Do not include any markdown or explanatory text outside the JSON. Return ONLY valid JSON. Do not use markdown formatting. Do not include trailing commas.`;
     
     try {
-        const apiKey = GEMINI_API_KEY;
+        const apiKey = getGeminiKey();
+        if(!apiKey) throw new Error("API Key not found. Please log out and enter your key.");
+
         const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
         const payload = { contents: [{ parts: [{ text: prompt }] }] };
         const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -1410,7 +1450,9 @@ function AssignmentGenerator({ student, onComplete, parentId }) {
         setLoadingTopics(true);
         const prompt = `You are an expert curriculum planner for the U.S. education system. A parent is creating an assignment for their child. Student's Grade: ${student.grade}. Subject: ${formData.subject}. Generate a list of 20-25 relevant academic topics for this subject. The list should include topics appropriate for the student's current grade level, as well as some more challenging topics from one or two grades above to help them get ahead. Return the output as a single, clean JSON object with one key: "topics". The value should be an array of strings. For example: {"topics": ["Topic 1", "Topic 2", "Advanced Topic 3"]}. Do not include any other text or markdown formatting. Return ONLY valid JSON. Do not use markdown formatting. Do not include trailing commas.`;
         try {
-            const apiKey = GEMINI_API_KEY;
+            const apiKey = getGeminiKey();
+            if(!apiKey) throw new Error("API Key not found.");
+
             const apiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
             const payload = { contents: [{ parts: [{ text: prompt }] }] };
             const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
